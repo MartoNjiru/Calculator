@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimi Math Explorer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .explorer {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.92);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 0;
+        }
+        /* Sidebar */
+        .sidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #eee;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .sidebar-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .sidebar-section:last-child { border-bottom: none; }
+        .sidebar-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        /* Main Display */
+        .main-display {
+            grid-column: 1 / -1;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-size: 2.8rem;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            word-wrap: break-word;
+            position: relative;
+        }
+        .display-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.1);
+            pointer-events: none;
+            z-index: 1;
+        }
+        /* Graph Container */
+        .graph-container {
+            grid-column: 2;
+            grid-row: 2;
+            position: relative;
+            background: white;
+            overflow: hidden;
+        }
+        #graph-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .graph-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px;
+            border-radius: 8px;
+            gap: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+        .graph-controls button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .graph-controls button:hover { background: #2980b9; }
+        /* Keypad */
+        .keypad {
+            padding: 20px;
+        }
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        button:hover { background: #2980b9; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        .operator { background: #e67e22; }
+        .operator:hover { background: #d35400; }
+        .function { background: #9b59b6; }
+        .function:hover { background: #8e44ad; }
+        .equals {
+            background: #27ae60;
+            grid-column: span 2;
+        }
+        .equals:hover { background: #229954; }
+        .clear { background: #e74c3c; }
+        .clear:hover { background: #c0392b; }
+        .special { background: #f1c40f; color: #2c3e50; }
+        .special:hover { background: #d4ac0d; }
+        .mode-button {
+            background: #95a5a6;
+        }
+        .mode-button:hover { background: #7f8c8d; }
+        .active-mode {
+            background: #27ae60 !important;
+            color: white !important;
+        }
+        /* History & Steps */
+        .history {
+            background: #ecf0f1;
+            padding: 15px;
+            font-size: 0.9rem;
+            color: #34495e;
+            border-top: 1px solid #bdc3c7;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #bdc3c7;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-item:hover { background: #d5d8dc; }
+        .history-item.active { background: #bdc3c7; font-weight: bold; }
+        .steps {
+            background: #f8f9fa;
+            padding: 15px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            border-top: 1px solid #eee;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            min-height: 60px;
+        }
+        .unit-converter {
+            background: rgba(255,255,255,0.85);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+        .unit-converter h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .converter-row {
+            display: flex;
+            gap: 10px;
+            margin: 8px 0;
+            align-items: center;
+        }
+        .converter-row input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .converter-row select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .note {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        .constants-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+        .constant-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+        }
+        .constant-item {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #eee;
+        }
+        .constant-label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        .constant-value {
+            font-family: monospace;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .explorer {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 120px 1fr 300px;
+            }
+            .sidebar {
+                order: 1;
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+            .main-display {
+                order: 2;
+            }
+            .graph-container {
+                order: 3;
+            }
+            .keypad {
+                order: 4;
+            }
+        }
+        @media (max-width: 600px) {
+            .explorer {
+                grid-template-rows: auto 100px 1fr 250px 200px;
+            }
+            .sidebar {
+                order: 1;
+            }
+            .main-display {
+                order: 2;
+            }
+            .graph-container {
+                order: 3;
+                height: 250px;
+            }
+            .keypad {
+                order: 4;
+            }
+            .sidebar-section {
+                order: 5;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="explorer">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>📜 History</h3>
+                <div class="history" id="history"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>🧮 Steps</h3>
+                <div class="steps" id="steps"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>🔁 Memory</h3>
+                <button class="special" onclick="setMemory()">M+</button>
+                <button class="special" onclick="recallMemory()">MR</button>
+                <button class="special" onclick="clearMemory()">MC</button>
+                <div class="note">Stored: <span id="memory-display">0</span></div>
+            </div>
+
+            <div class="sidebar-section constants-panel">
+                <h3>⚛️ Constants</h3>
+                <div class="constant-grid" id="constants-grid"></div>
+            </div>
+
+            <!-- ADDED PROBABILITY SECTION -->
+            <div class="sidebar-section">
+                <h3>🎲 Probability</h3>
+                <button class="special" onclick="appendToDisplay('C(')">nCr</button>
+                <button class="special" onclick="appendToDisplay('P(')">nPr</button>
+                <div class="note">nCr(n,r), nPr(n,r)</div>
+            </div>
+        </aside>
+
+        <!-- Main Display -->
+        <div class="main-display" id="display">0</div>
+        <div class="display-overlay" id="display-overlay"></div>
+
+        <!-- Graph Container -->
+        <div class="graph-container">
+            <canvas id="graph-canvas"></canvas>
+            <div class="graph-controls">
+                <button id="graph-reset">⭮</button>
+                <button id="graph-zoom-in">+</button>
+                <button id="graph-zoom-out">−</button>
+                <button id="graph-trace">● Trace</button>
+                <button id="graph-derivative">f'</button>
+                <button id="graph-integral">∫</button>
+            </div>
+        </div>
+
+        <!-- Keypad -->
+        <div class="keypad">
+            <div class="buttons">
+                <!-- First row: Mode & Graph -->
+                <button class="mode-button" id="modeToggle">🧮 Standard</button>
+                <button class="special" onclick="toggleGraph()">📈 Graph</button>
+                <button class="clear" onclick="clearDisplay()">AC</button>
+                <button class="clear" onclick="backspace()">←</button>
+                <!-- Memory moved to sidebar -->
+
+                <!-- Second row: Trig & Powers -->
+                <button class="function" onclick="appendToDisplay('sin(')">sin</button>
+                <button class="function" onclick="appendToDisplay('cos(')">cos</button>
+                <button class="function" onclick="appendToDisplay('tan(')">tan</button>
+                <button class="function" onclick="appendToDisplay('sqrt(')">√</button>
+                <button class="function" onclick="appendToDisplay('^2')">x²</button>
+
+                <!-- Third row: Logs & Special -->
+                <button class="function" onclick="appendToDisplay('log10(')">log</button>
+                <button class="function" onclick="appendToDisplay('ln(')">ln</button>
+                <button class="function" onclick="appendToDisplay('factorial(')">x!</button>
+                <button class="special" onclick="differentiate()">d/dx</button>
+                <button class="special" onclick="integrate()">∫dx</button>
+
+                <!-- Fourth row: Numbers & Basic Ops -->
+                <button onclick="appendToDisplay('7')">7</button>
+                <button onclick="appendToDisplay('8')">8</button>
+                <button onclick="appendToDisplay('9')">9</button>
+                <button class="operator" onclick="appendToDisplay('/')">÷</button>
+                <button class="special" onclick="solveEquation()">Solve</button>
+
+                <button onclick="appendToDisplay('4')">4</button>
+                <button onclick="appendToDisplay('5')">5</button>
+                <button onclick="appendToDisplay('6')">6</button>
+                <button class="operator" onclick="appendToDisplay('*')">×</button>
+                <button class="special" onclick="expandExpr()">Expand</button>
+
+                <!-- Fifth row: Zero, Decimal, Equals -->
+                <button onclick="appendToDisplay('0')" class="zero">0</button>
+                <button onclick="appendToDisplay('.')">.</button>
+                <button class="equals" onclick="calculate()">=</button>
+                <button class="special" onclick="simplifyExpr()">Simplify</button>
+                <button class="special" onclick="numericalSolver()">Numerical</button>
+
+                <!-- Sixth row: Hyperbolic Functions -->
+                <button class="function" onclick="appendToDisplay('sinh(')">sinh</button>
+                <button class="function" onclick="appendToDisplay('cosh(')">cosh</button>
+                <button class="function" onclick="appendToDisplay('tanh(')">tanh</button>
+                <button class="function" onclick="appendToDisplay('asinh(')">asinh</button>
+                <button class="function" onclick="appendToDisplay('acosh(')">acosh</button>
+
+                <!-- Seventh row: Inverse Hyperbolic & Exponential -->
+                <button class="function" onclick="appendToDisplay('atanh(')">atanh</button>
+                <button class="function" onclick="appendToDisplay('exp(')">exp</button>
+                <button class="special" onclick="appendToDisplay('log_b(')">log_b</button>
+                <!-- Two empty slots to keep grid balanced -->
+                <button></button>
+                <button></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.4/nerdamer.min.js"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        // ---------- STATE ----------
+        let displayValue = '0';
+        let waitingForOperand = false;
+        let operator = null;
+        let firstOperand = null;
+        let history = JSON.parse(localStorage.getItem('mathExplorerHistory') || '[]');
+        let steps = '';
+        let memory = 0;
+        let isSymbolicMode = false;
+        let isGraphVisible = false;
+
+        // Graph State
+        let graphExpr = '';
+        let graphXMin = -10, graphXMax = 10;
+        let graphYMin = -10, graphYMax = 10;
+        let graphScaleX = 1, graphScaleY = 1;
+        let graphOffsetX = 0, graphOffsetY = 0;
+        let isTracing = false;
+        let tracePoint = null;
+        let showDerivative = false;
+        let showIntegral = false;
+        let integralBounds = {a: 0, b: 1};
+
+        // Memory
+        let memoryValue = 0;
+
+        // ---------- INIT ----------
+        initConstants();
+        updateDisplay();
+        renderHistory();
+        updateModeToggle();
+        initGraph();
+
+        // ---------- DISPLAY ----------
+        function updateDisplay() {
+            document.getElementById('display').textContent = displayValue;
+            document.getElementById('display-overlay').textContent = '';
+        }
+
+        function appendToDisplay(char) {
+            if (waitingForOperand) {
+                displayValue = char;
+                waitingForOperand = false;
+            } else {
+                displayValue = displayValue === '0' ? char : displayValue + char;
+            }
+            updateDisplay();
+        }
+
+        function clearDisplay() {
+            displayValue = '0';
+            waitingForOperand = false;
+            operator = null;
+            firstOperand = null;
+            steps = '';
+            document.getElementById('steps').textContent = '';
+            updateDisplay();
+        }
+
+        function backspace() {
+            displayValue = displayValue.length === 1 ? '0' : displayValue.slice(0, -1);
+            updateDisplay();
+        }
+
+        // ---------- CALCULATION ----------
+        function calculate() {
+            try {
+                // Prevent dangerous code
+                if (!/^[0-9+\-*/.%()^xX\s.a-zA-Z]+$/.test(displayValue)) {
+                    throw new Error('Invalid characters');
+                }
+
+                // Step-by-step for basic arithmetic
+                if (/^[0-9+\-*/. ]+$/.test(displayValue)) {
+                    steps = getSteps(displayValue);
+                    document.getElementById('steps').textContent = steps;
+                } else {
+                    steps = '';
+                    document.getElementById('steps').textContent = '';
+                }
+
+                // Evaluate numerically (safe)
+                const result = evaluateNumeric(displayValue);
+
+                // Save to history
+                history.unshift({
+                    expression: displayValue,
+                    result: result,
+                    timestamp: new Date().toISOString(),
+                    type: 'numeric'
+                });
+                if (history.length > 50) history.pop();
+                localStorage.setItem('mathExplorerHistory', JSON.stringify(history));
+
+                displayValue = result.toString();
+                waitingForOperand = true;
+                updateDisplay();
+                renderHistory();
+
+                // Update graph if visible
+                if (isGraphVisible && !isSymbolicMode) {
+                    updateGraph();
+                }
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+                setTimeout(() => {
+                    if (displayValue === 'Error') clearDisplay();
+                }, 1500);
+            }
+        }
+
+        function evaluateNumeric(expr) {
+            // First, try if it's just numbers and operators (for performance)
+            if (/^[\d+\-*/.%(). ]+$/.test(expr)) {
+                try {
+                    // Handle %
+                    expr = expr.replace(/(\d+)%/g, (_, p1) => `(${p1}/100)`);
+                    // Handle implicit multiplication
+                    expr = expr.replace(/(\d)\(/g, '$1*(');
+                    expr = expr.replace(/\)(\d)/g, ')*$1');
+                    // Handle ^
+                    expr = expr.replace(/\^/g, '**');
+                    return Function(`'use strict'; return (${expr})`)();
+                } catch (e) {
+                    // Fall through to nerdamer if basic eval fails
+                }
+            }
+
+            // For anything with letters or functions, or if basic eval failed, use nerdamer
+            try {
+                const nerExpr = nerdamer(expr);
+                const result = nerExpr.evaluate();
+                if (nerExpr.isNumber()) {
+                    return result.value();
+                } else {
+                    // Try to parse as number
+                    const strResult = nerExpr.toString().trim();
+                    if (!isNaN(strResult) && strResult !== '') {
+                        return parseFloat(strResult);
+                    }
+                    throw new Error('Result is not a number');
+                }
+            } catch (e) {
+                throw new Error(`Could not evaluate expression: ${e.message}`);
+            }
+        }
+
+        function getSteps(expr) {
+            const cleaned = expr.replace(/\s+/g, '');
+            const parts = cleaned.match(/([0-9.]+)([+\-*/])([0-9.]+)/);
+            if (!parts) return '';
+            const [, a, op, b] = parts;
+            const numA = parseFloat(a);
+            const numB = parseFloat(b);
+            let result;
+            switch(op) {
+                case '+': result = numA + numB; break;
+                case '-': result = numA - numB; break;
+                case '*': result = numA * numB; break;
+                case '/':
+                    if (numB === 0) return 'Error: Division by zero';
+                    result = numA / numB;
+                    break;
+            }
+            return [
+                `${a} ${op} ${b}`,
+                `= ${numA} ${op} ${numB}`,
+                `= ${result}`
+            ].join('\n');
+        }
+
+        // ---------- SYMBOLIC OPERATIONS ----------
+        function differentiate() {
+            if (!isSymbolicMode) { alert('Switch to Symbolic mode first'); return; }
+            try {
+                const expr = displayValue.trim();
+                if (!expr) return;
+                const nerExpr = nerdamer(expr);
+                const derivative = nerExpr.derivative('x').toString();
+                displayValue = derivative;
+                waitingForOperand = true;
+                steps = `d/dx [${expr}] = ${derivative}`;
+                document.getElementById('steps').textContent = steps;
+                updateDisplay();
+                addToHistory(expr, derivative, 'derivative');
+
+                // Update graph if visible
+                if (isGraphVisible) {
+                    graphExpr = expr;
+                    showDerivative = true;
+                    showIntegral = false;
+                    updateGraph();
+                }
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+            }
+        }
+
+        function integrate() {
+            if (!isSymbolicMode) { alert('Switch to Symbolic mode first'); return; }
+            try {
+                const expr = displayValue.trim();
+                if (!expr) return;
+                const nerExpr = nerdamer(expr);
+                // Numeric integration via Simpson's rule
+                const result = numericalIntegrate(expr, 0, 1);
+                displayValue = result.toFixed(6);
+                waitingForOperand = true;
+                steps = `∫₀¹ ${expr} dx ≈ ${result.toFixed(6)}`;
+                document.getElementById('steps').textContent = steps;
+                updateDisplay();
+                addToHistory(expr, result.toFixed(6), 'integral');
+
+                // Update graph if visible
+                if (isGraphVisible) {
+                    graphExpr = expr;
+                    showDerivative = false;
+                    showIntegral = true;
+                    integralBounds = {a: 0, b: 1};
+                    updateGraph();
+                }
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+            }
+        }
+
+        function solveEquation() {
+            if (!isSymbolicMode) { alert('Switch to Symbolic mode first'); return; }
+            try {
+                const expr = displayValue.trim();
+                if (!expr) return;
+                // Assume equation is in form expr = 0 or expr1 = expr2
+                let left, right;
+                if (expr.includes('=')) {
+                    const sides = expr.split('=');
+                    left = sides[0].trim();
+                    right = sides[1].trim() || '0';
+                } else {
+                    left = expr;
+                    right = '0';
+                }
+                const nerLeft = nerdamer(left);
+                const nerRight = nerdamer(right);
+                const solutions = nerdamer.solveEquations([nerLeft.equals(nerRight)], ['x']);
+                const solText = solutions.toString();
+                displayValue = solText;
+                waitingForOperand = true;
+                steps = `Solve ${left} = ${right} → x = ${solText}`;
+                document.getElementById('steps').textContent = steps;
+                updateDisplay();
+                addToHistory(expr, solText, 'solve');
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+            }
+        }
+
+        function simplifyExpr() {
+            if (!isSymbolicMode) { alert('Switch to Symbolic mode first'); return; }
+            try {
+                const expr = displayValue.trim();
+                if (!expr) return;
+                const nerExpr = nerdamer(expr);
+                const simplified = nerExpr.simplify().toString();
+                displayValue = simplified;
+                waitingForOperand = true;
+                steps = `Simplify ${expr} → ${simplified}`;
+                document.getElementById('steps').textContent = steps;
+                updateDisplay();
+                addToHistory(expr, simplified, 'simplify');
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+            }
+        }
+
+        function expandExpr() {
+            if (!isSymbolicMode) { alert('Switch to Symbolic mode first'); return; }
+            try {
+                const expr = displayValue.trim();
+                if (!expr) return;
+                const nerExpr = nerdamer(expr);
+                const expanded = nerExpr.expand().toString();
+                displayValue = expanded;
+                waitingForOperand = true;
+                steps = `Expand ${expr} → ${expanded}`;
+                document.getElementById('steps').textContent = steps;
+                updateDisplay();
+                addToHistory(expr, expanded, 'expand');
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+            }
+        }
+
+        function numericalSolver() {
+            if (!isSymbolicMode) { alert('Switch to Symbolic mode first'); return; }
+            try {
+                const expr = displayValue.trim();
+                if (!expr) return;
+                // Solve f(x) = 0 using Newton-Raphson
+                const nerExpr = nerdamer(expr);
+                const derivativeExpr = nerExpr.derivative('x');
+                let x0 = 1; // Initial guess
+                let maxIter = 100;
+                let tolerance = 1e-6;
+                let x = x0;
+
+                for (let i = 0; i < maxIter; i++) {
+                    const fx = nerExpr.evaluate({x: x});
+                    const fpx = derivativeExpr.evaluate({x: x});
+                    if (Math.abs(fpx) < 1e-12) break; // Avoid division by zero
+                    const xNew = x - fx / fpx;
+                    if (Math.abs(xNew - x) < tolerance) {
+                        x = xNew;
+                        break;
+                    }
+                    x = xNew;
+                }
+
+                displayValue = x.toFixed(6);
+                waitingForOperand = true;
+                steps = `Solve ${expr} = 0 → x ≈ ${x.toFixed(6)} (Newton-Raphson)`;
+                document.getElementById('steps').textContent = steps;
+                updateDisplay();
+                addToHistory(expr, x.toFixed(6), 'numerical');
+            } catch (e) {
+                document.getElementById('display').textContent = 'Error';
+                document.getElementById('steps').textContent = e.message;
+            }
+        }
+
+        // ---------- GRAPHING ----------
+        function initGraph() {
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Resize canvas to match display
+            function resizeCanvas() {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+                drawGraph();
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Mouse events for panning and tracing
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                // Zoom towards mouse position
+                const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                const worldX = pixelToWorldX(x);
+                const worldY = pixelToWorldY(y);
+
+                graphXMin = worldX + (graphXMin - worldX) * zoomFactor;
+                graphXMax = worldX + (graphXMax - graphXMax) * zoomFactor;
+                graphYMin = worldY + (graphYMin - graphYMin) * zoomFactor;
+                graphYMax = worldY + (graphYMax - graphYMin) * zoomFactor;
+
+                drawGraph();
+            });
+
+            let isPanning = false;
+            let lastPos = {x: 0, y: 0};
+
+            canvas.addEventListener('mousedown', (e) => {
+                isPanning = true;
+                lastPos = {x: e.clientX, y: e.clientY};
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+                const dx = e.clientX - lastPos.x;
+                const dy = e.clientY - lastPos.y;
+
+                const worldDX = pixelToWorldX(dx, 0) - pixelToWorldX(0, 0);
+                const worldDY = pixelToWorldY(0, dy) - pixelToWorldY(0, 0);
+
+                graphXMin -= worldDX;
+                graphXMax -= worldDX;
+                graphYMin -= worldDY;
+                graphYMax -= worldDY;
+
+                lastPos = {x: e.clientX, y: e.clientY};
+                drawGraph();
+
+                // Update trace point if tracing
+                if (isTracing) {
+                    updateTracePoint(e.clientX, e.clientY);
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => isPanning = false);
+            canvas.addEventListener('mouseleave', () => isPanning = false);
+
+            // Trace point update
+            function updateTracePoint(screenX, screenY) {
+                const worldX = pixelToWorldX(screenX);
+                const worldY = pixelToWorldY(screenY);
+                tracePoint = {x: worldX, y: worldY};
+                drawGraph();
+            }
+
+            canvas.addEventListener('click', (e) => {
+                if (isTracing) {
+                    updateTracePoint(e.clientX, e.clientY);
+                }
+            });
+        }
+
+        function pixelToWorldX(px, py = 0) {
+            const canvas = document.getElementById('graph-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const normalizedX = (px - rect.left) / canvas.width;
+            return graphXMin + normalizedX * (graphXMax - graphXMin);
+        }
+
+        function pixelToWorldY(px, py) {
+            const canvas = document.getElementById('graph-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const normalizedY = 1 - (py - rect.top) / canvas.height; // Flip Y axis
+            return graphYMin + normalizedY * (graphYMax - graphYMin);
+        }
+
+        function worldToPixelX(wx) {
+            const canvas = document.getElementById('graph-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const normalizedX = (wx - graphXMin) / (graphXMax - graphXMin);
+            return rect.left + normalizedX * canvas.width;
+        }
+
+        function worldToPixelY(wy) {
+            const canvas = document.getElementById('graph-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const normalizedY = 1 - (wy - graphYMin) / (graphYMax - graphYMin); // Flip Y axis
+            return rect.top + normalizedY * canvas.height;
+        }
+
+        function drawGraph() {
+            const canvas = document.getElementById('graph-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw axes
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 1;
+
+            // X-axis
+            const yZero = worldToPixelY(0);
+            if (yZero >= 0 && yZero <= canvas.height) {
+                ctx.beginPath();
+                ctx.moveTo(0, yZero);
+                ctx.lineTo(canvas.width, yZero);
+                ctx.stroke();
+            }
+
+            // Y-axis
+            const xZero = worldToPixelX(0);
+            if (xZero >= 0 && xZero <= canvas.width) {
+                ctx.beginPath();
+                ctx.moveTo(xZero, 0);
+                ctx.lineTo(xZero, canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw grid
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 0.5;
+            const gridX = 1;
+            const gridY = 1;
+
+            // Vertical grid lines
+            for (let x = Math.ceil(graphXMin / gridX) * gridX; x <= graphXMax; x += gridX) {
+                const px = worldToPixelX(x);
+                if (px >= 0 && px <= canvas.width) {
+                    ctx.beginPath();
+                    ctx.moveTo(px, 0);
+                    ctx.lineTo(px, canvas.height);
+                    ctx.stroke();
+                }
+            }
+
+            // Horizontal grid lines
+            for (let y = Math.ceil(graphYMin / gridY) * gridY; y <= graphYMax; y += gridY) {
+                const py = worldToPixelY(y);
+                if (py >= 0 && py <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, py);
+                    ctx.lineTo(canvas.width, py);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw function if we have an expression
+            if (graphExpr && graphExpr.trim() !== '') {
+                try {
+                    const nerExpr = nerdamer(graphExpr);
+
+                    // Draw function
+                    ctx.strokeStyle = '#3498db';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+
+                    let firstPoint = true;
+                    const steps = 200; // Number of points to plot
+                    for (let i = 0; i <= steps; i++) {
+                        const x = graphXMin + (graphXMax - graphXMin) * i / steps;
+                        try {
+                            const y = nerExpr.evaluate({x: x});
+                            if (isFinite(y)) {
+                                const px = worldToPixelX(x);
+                                const py = worldToPixelY(y);
+                                if (firstPoint) {
+                                    ctx.moveTo(px, py);
+                                    firstPoint = false;
+                                } else {
+                                    ctx.lineTo(px, py);
+                                }
+                            }
+                        } catch (e) {
+                            // Skip points that cause errors
+                            firstPoint = true;
+                        }
+                    }
+                    ctx.stroke();
+
+                    // Draw derivative if requested
+                    if (showDerivative) {
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.lineWidth = 1.5;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+
+                        let firstPoint = true;
+                        const nerDeriv = nerExpr.derivative('x');
+                        for (let i = 0; i <= steps; i++) {
+                            const x = graphXMin + (graphXMax - graphXMin) * i / steps;
+                            try {
+                                const y = nerDeriv.evaluate({x: x});
+                                if (isFinite(y)) {
+                                    const px = worldToPixelX(x);
+                                    const py = worldToPixelY(y);
+                                    if (firstPoint) {
+                                        ctx.moveTo(px, py);
+                                        firstPoint = false;
+                                    } else {
+                                        ctx.lineTo(px, py);
+                                    }
+                                }
+                            } catch (e) {
+                                firstPoint = true;
+                            }
+                        }
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    // Draw integral if requested
+                    if (showIntegral) {
+                        ctx.fillStyle = 'rgba(46, 204, 113, 0.2)';
+                        ctx.beginPath();
+
+                        // Draw curve from a to b
+                        let firstPoint = true;
+                        const steps = 100;
+                        for (let i = 0; i <= steps; i++) {
+                            const x = integralBounds.a + (integralBounds.b - integralBounds.a) * i / steps;
+                            try {
+                                const y = nerExpr.evaluate({x: x});
+                                if (isFinite(y)) {
+                                    const px = worldToPixelX(x);
+                                    const py = worldToPixelY(y);
+                                    if (firstPoint) {
+                                        ctx.moveTo(px, py);
+                                        firstPoint = false;
+                                    } else {
+                                        ctx.lineTo(px, py);
+                                    }
+                                }
+                            } catch (e) {
+                                firstPoint = true;
+                            }
+                        }
+
+                        // Close the path down to x-axis
+                        const pxB = worldToPixelX(integralBounds.b);
+                        const pyB = worldToPixelY(0);
+                        const pxA = worldToPixelX(integralBounds.a);
+                        const pyA = worldToPixelY(0);
+
+                        ctx.lineTo(pxB, pyB);
+                        ctx.lineTo(pxA, pyA);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    // Draw trace point if active
+                    if (isTracing && tracePoint) {
+                        ctx.fillStyle = '#f39c12';
+                        ctx.beginPath();
+                        ctx.arc(
+                            worldToPixelX(tracePoint.x),
+                            worldToPixelY(tracePoint.y),
+                            5, 0, 2 * Math.PI
+                        );
+                        ctx.fill();
+
+                        // Show coordinates
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(
+                            `(${tracePoint.x.toFixed(3)}, ${tracePoint.y.toFixed(3)})`,
+                            worldToPixelX(tracePoint.x),
+                            worldToPixelY(tracePoint.y) - 10
+                        );
+                    }
+
+                } catch (e) {
+                    // Drawing failed - maybe invalid expression
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Invalid function for graphing', canvas.width/2, canvas.height/2);
+                }
+            }
+
+            // Draw axis labels
+            ctx.fillStyle = '#3498db';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+
+            // X-axis label
+            ctx.fillText('x', worldToPixelX(graphXMax - 1), worldToPixelY(0) - 10);
+
+            // Y-axis label
+            ctx.save();
+            ctx.translate(worldToPixelX(0) + 10, worldToPixelY(graphYMax - 1));
+            ctx.rotate(-Math.PI/2);
+            ctx.fillText('y', 0, 0);
+            ctx.restore();
+        }
+
+        function updateGraph() {
+            drawGraph();
+        }
+
+        function toggleGraph() {
+            isGraphVisible = !isGraphVisible;
+            document.getElementById('graph-canvas').style.display = isGraphVisible ? 'block' : 'none';
+            document.querySelector('.graph-controls').style.display = isGraphVisible ? 'flex' : 'none';
+
+            if (isGraphVisible) {
+                // Set expression to current display if in symbolic mode
+                if (isSymbolicMode && displayValue !== '0' && displayValue !== '') {
+                    graphExpr = displayValue;
+                } else if (!isSymbolicMode) {
+                    graphExpr = 'x'; // Default to y=x
+                }
+                updateGraph();
+            }
+        }
+
+        // Graph controls
+        document.getElementById('graph-reset').addEventListener('click', () => {
+            graphXMin = -10; graphXMax = 10;
+            graphYMin = -10; graphYMax = 10;
+            graphOffsetX = 0; graphOffsetY = 0;
+            updateGraph();
+        });
+
+        document.getElementById('graph-zoom-in').addEventListener('click', () => {
+            const centerX = (graphXMin + graphXMax) / 2;
+            const centerY = (graphYMin + graphYMax) / 2;
+            const width = (graphXMax - graphXMin) * 0.9;
+            const height = (graphYMax - graphYMin) * 0.9;
+            graphXMin = centerX - width/2;
+            graphXMax = centerX + width/2;
+            graphYMin = centerY - height/2;
+            graphYMax = centerY + height/2;
+            updateGraph();
+        });
+
+        document.getElementById('graph-zoom-out').addEventListener('click', () => {
+            const centerX = (graphXMin + graphXMax) / 2;
+            const centerY = (graphYMin + graphYMax) / 2;
+            const width = (graphXMax - graphXMin) * 1.1;
+            const height = (graphYMax - graphYMin) * 1.1;
+            graphXMin = centerX - width/2;
+            graphXMax = centerX + width/2;
+            graphYMin = centerY - height/2;
+            graphYMax = centerY + height/2;
+            updateGraph();
+        });
+
+        document.getElementById('graph-trace').addEventListener('click', () => {
+            isTracing = !isTracing;
+            document.getElementById('graph-trace').textContent = isTracing ? '● Trace' : '○ Trace';
+            if (!isTracing) tracePoint = null;
+            updateGraph();
+        });
+
+        document.getElementById('graph-derivative').addEventListener('click', () => {
+            showDerivative = !showDerivative;
+            showIntegral = false;
+            document.getElementById('graph-derivative').textContent = showDerivative ? 'f'·' : 'f''';
+            updateGraph();
+        });
+
+        document.getElementById('graph-integral').addEventListener('click', () => {
+            showIntegral = !showIntegral;
+            showDerivative = false;
+            document.getElementById('graph-integral').textContent = showIntegral ? '∫' : '∫';
+            updateGraph();
+        });
+
+        // ---------- MEMORY ----------
+        function setMemory() {
+            memory = parseFloat(displayValue) || 0;
+            document.getElementById('memory-display').textContent = memory.toString();
+        }
+        function recallMemory() {
+            displayValue = memory.toString();
+            waitingForOperand = false;
+            updateDisplay();
+        }
+        function clearMemory() {
+            memory = 0;
+            document.getElementById('memory-display').textContent = '0';
+        }
+
+        // ---------- HISTORY ----------
+        function renderHistory() {
+            const historyEl = document.getElementById('history');
+            historyEl.innerHTML = history.map((item, index) =>
+                `<div class="history-item" data-index="${index}" onclick="useHistory(${index})">
+                    ${item.expression} = ${item.result} (<span class="history-type">${item.type}</span>)
+                </div>`).join('');
+        }
+
+        function useHistory(index) {
+            const item = history[index];
+            displayValue = item.result;
+            waitingForOperand = true;
+            updateDisplay();
+            document.querySelectorAll('.history-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+        }
+
+        function addToHistory(expr, result, type) {
+            history.unshift({
+                expression: expr,
+                result: result,
+                timestamp: new Date().toISOString(),
+                type: type
+            });
+            if (history.length > 50) history.pop();
+            localStorage.setItem('mathExplorerHistory', JSON.stringify(history));
+        }
+
+        // ---------- NUMERICAL INTEGRATION ----------
+        function numericalIntegrate(expr, a, b, n = 100) {
+            // Simpson's 1/3 rule for numerical integration
+            if (n % 2 !== 0) n++; // Ensure even number of intervals
+            const h = (b - a) / n;
+            let sum = nerFunc(expr, a) + nerFunc(expr, b);
+
+            for (let i = 1; i < n; i++) {
+                const x = a + i * h;
+                if (i % 2 === 0) {
+                    sum += 2 * nerFunc(expr, x);
+                } else {
+                    sum += 4 * nerFunc(expr, x);
+                }
+            }
+
+            return (h / 3) * sum;
+        }
+
+        function nerFunc(expr, x) {
+            try {
+                const nerExpr = nerdamer(expr);
+                return nerExpr.evaluate({x: x});
+            } catch (e) {
+                return 0; // Return 0 for points that cause errors
+            }
+        }
+
+        // ---------- CONSTANTS ----------
+        function initConstants() {
+            const constants = {
+                'π': Math.PI,
+                'e': Math.E,
+                'c': 299792458, // Speed of light (m/s)
+                'G': 6.67430e-11, // Gravitational constant (m³/kg·s²)
+                'h': 6.62607015e-34, // Planck's constant (J·s)
+                'kB': 1.380649e-23, // Boltzmann constant (J/K)
+                'NA': 6.02214076e23, // Avogadro's number (mol⁻¹)
+                'R': 8.314462618, // Gas constant (J/mol·K)
+                'σ': 5.670374419e-8, // Stefan-Boltzmann constant (W/m²·K⁴)
+                'ε0': 8.8541878128e-12, // Vacuum permittivity (F/m)
+                'μ0': 1.2566370614e-6, // Vacuum permeability (N/A²)
+            };
+
+            const grid = document.getElementById('constants-grid');
+            grid.innerHTML = Object.entries(constants).map(([symbol, value]) => {
+                const formatted =
+                    Math.abs(value) >= 1e4 || Math.abs(value) < 1e-3 && value !== 0
+                        ? value.toExponential(3)
+                        : value.toFixed(6);
+                return `
+                    <div class="constant-item" onclick="insertConstant('${symbol}')">
+                        <div class="constant-label">${symbol}</div>
+                        <div class="constant-value">${formatted}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function insertConstant(symbol) {
+            appendToDisplay(symbol);
+        }
+
+        // ---------- MODE TOGGLE ----------
+        function toggleMode() {
+            isSymbolicMode = !isSymbolicMode;
+            updateModeToggle();
+            if (isSymbolicMode) {
+                displayValue = 'x';
+                waitingForOperand = false;
+            } else {
+                displayValue = '0';
+                waitingForOperand = false;
+            }
+            updateDisplay();
+            document.getElementById('steps').textContent = '';
+        }
+
+        function updateModeToggle() {
+            const btn = document.getElementById('modeToggle');
+            btn.textContent = isSymbolicMode ? '🧮 Symbolic' : '🧮 Standard';
+            btn.classList.toggle('active', isSymbolicMode);
+        }
+
+        // ---------- KEYBOARD SUPPORT ----------
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') appendToDisplay(e.key);
+            if (e.key === '.') appendToDisplay('.');
+            if (e.key === 'Enter' || e.key === '=') calculate();
+            if (e.key === 'Backspace') backspace();
+            if (e.key === 'Escape') clearDisplay();
+            if (e.key === '+') appendToDisplay('+');
+            if (e.key === '-') appendToDisplay('-');
+            if (e.key == '*') appendToDisplay('*');
+            if (e.key == '/') appendToDisplay('/');
+            if (e.key == '%') appendToDisplay('%');
+            if (e.key == '^') appendToDisplay('^');
+        });
+    </script>
+</body>
+</html>
